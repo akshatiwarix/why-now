@@ -38,10 +38,17 @@ export function testAttributes(
 }
 
 /**
- * Observations of this company that could have been seen by `asOf`. Undated
- * observations are excluded from corpus lookups — an undated record cannot
- * establish that something was true at a point in time, which is the only
- * reason a precondition consults the corpus at all.
+ * Observations of this company that could have been seen by `asOf`.
+ *
+ * Both dates gate visibility, and both matter. `eventDate` is when the thing
+ * happened; `observedAt` is when anyone could have read about it. An event
+ * that had happened but had not yet been reported was not knowable, and a tool
+ * that rebuts a hypothesis using tomorrow's article is cheating at its own
+ * benchmark. The sweep caught exactly that.
+ *
+ * Undated observations are excluded — an undated record cannot establish that
+ * something was true at a point in time, which is the only reason a
+ * precondition consults the corpus at all.
  */
 export function visibleObservations(
   observations: readonly Observation[],
@@ -51,6 +58,7 @@ export function visibleObservations(
   return observations.filter(
     (observation) =>
       observation.companyId === companyId &&
+      observation.observedAt <= asOf &&
       observation.eventDate !== null &&
       observation.eventDate <= asOf,
   );
