@@ -108,7 +108,6 @@ export function validateCorpus(
     }
   }
 
-  const companyIds = new Set(companies.map((company) => company.id));
   const referenced = new Set(observations.map((observation) => observation.companyId));
   for (const company of companies) {
     if (!referenced.has(company.id)) {
