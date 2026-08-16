@@ -281,8 +281,9 @@ export const W1_WARRANTS: readonly Warrant[] = [
       {
         id: "d-postmortem-closed-it",
         kind: "postmortem_published",
+        match: ["severity"],
         validForDays: 60,
-        text: "a postmortem with committed remediation was published, closing the scrutiny it opened",
+        text: "a postmortem with committed remediation was published for that incident, closing the scrutiny it opened — and published recently enough that the closure still holds",
       },
     ],
   },
