@@ -2,10 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { buildHypotheses } from "@/lib/argument/index";
+import { addDays } from "@/lib/argument/dates";
+import { toAuditJson, toOutreachText } from "@/lib/export/text";
 import type { Company, Observation, Seller, Warrant } from "@/lib/argument/types";
 import { AccountList, type AccountSummary } from "./AccountList";
 import { ArgumentLadder } from "./ArgumentLadder";
+import { PastePanel } from "./PastePanel";
 import { RejectedPane } from "./RejectedPane";
+import { Timeline } from "./Timeline";
 import { SectionTitle } from "./ui";
 
 /**
@@ -29,6 +33,7 @@ export function Console({ data }: { data: ConsoleData }) {
   const [companyId, setCompanyId] = useState(data.companies[0]?.id ?? "");
   const [sellerId, setSellerId] = useState(data.sellers[0]?.id ?? "");
   const [asOf, setAsOf] = useState(data.defaultAsOf);
+  const [copied, setCopied] = useState<string | null>(null);
 
   const seller = data.sellers.find((entry) => entry.id === sellerId) ?? data.sellers[0];
   const company = data.companies.find((entry) => entry.id === companyId) ?? data.companies[0];
@@ -58,7 +63,22 @@ export function Console({ data }: { data: ConsoleData }) {
     });
   }, [company, seller, data.observations, data.warrants, asOf]);
 
+  const observations = useMemo(
+    () => data.observations.filter((observation) => observation.companyId === companyId),
+    [data.observations, companyId],
+  );
+
   if (company === undefined || seller === undefined || report === null) return null;
+
+  async function copy(label: string, value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(label);
+      window.setTimeout(() => setCopied(null), 1800);
+    } catch {
+      setCopied("clipboard blocked");
+    }
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 lg:px-8">
@@ -80,6 +100,26 @@ export function Console({ data }: { data: ConsoleData }) {
             className="rounded border border-slate-300 bg-transparent px-2 py-1 font-mono text-sm dark:border-slate-700"
           />
         </label>
+
+        <div className="flex items-center gap-1">
+          {([-180, -90, -30, 30] as const).map((offset) => (
+            <button
+              key={offset}
+              type="button"
+              onClick={() => setAsOf(addDays(asOf, offset))}
+              className="rounded border border-slate-300 px-2 py-1 font-mono text-xs text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+            >
+              {offset > 0 ? `+${offset}` : offset}d
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setAsOf(data.defaultAsOf)}
+            className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+          >
+            reset
+          </button>
+        </div>
 
         <div className="flex flex-wrap items-center gap-1">
           <span className="mr-1 text-sm text-slate-500 dark:text-slate-400">Selling</span>
@@ -117,6 +157,34 @@ export function Console({ data }: { data: ConsoleData }) {
             </p>
           </section>
 
+          <Timeline
+            observations={observations}
+            chains={[...report.emitted, ...report.rejected]}
+            asOf={asOf}
+          />
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => copy("outreach text", toOutreachText(report, company, seller))}
+              className="rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+            >
+              Copy outreach text
+            </button>
+            <button
+              type="button"
+              onClick={() => copy("audit JSON", toAuditJson(report))}
+              className="rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+            >
+              Copy audit JSON
+            </button>
+            {copied !== null ? (
+              <span className="text-sm text-emerald-700 dark:text-emerald-500">
+                copied {copied}
+              </span>
+            ) : null}
+          </div>
+
           <section className="space-y-3">
             <SectionTitle count={report.emitted.length}>Emitted</SectionTitle>
             {report.emitted.length === 0 ? (
@@ -131,6 +199,8 @@ export function Console({ data }: { data: ConsoleData }) {
           </section>
 
           <RejectedPane chains={report.rejected} />
+
+          <PastePanel sellerId={seller.id} asOf={asOf} />
         </main>
       </div>
     </div>
